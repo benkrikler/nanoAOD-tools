@@ -43,7 +43,7 @@ class Module(object):
             self.objs.append( getattr( self, obj.GetName() + '_' + name ) )
         setattr( self, obj.GetName(), objlist )
 
-def eventLoop(modules, inputFile, outputFile, inputTree, wrappedOutputTree, maxEvents=-1, eventRange=None, progress=(10000,sys.stdout), filterOutput=True): 
+def eventLoop(modules, inputFile, outputFile, inputTree, wrappedOutputTree, maxEvents=-1, eventRange=None, progress=(10000,sys.stdout), filterOutput=True, repeat_inputs=1): 
     for m in modules: 
         m.beginFile(inputFile, outputFile, inputTree, wrappedOutputTree)
 
@@ -62,26 +62,27 @@ def eventLoop(modules, inputFile, outputFile, inputTree, wrappedOutputTree, maxE
     for ie,i in enumerate(xrange(entries) if eventRange == None else eventRange):
         if maxEvents > 0 and ie >= maxEvents: break
         e = Event(inputTree,i)
-        weight = 1.
-        if hasattr(e, "genWeight"):
-            genWeight = getattr(e, "genWeight",None)
-            if genWeight:
-                weight = genWeight
-        h_nevents.Fill(0.5,weight)
-        if weight>=0: h_nevents.Fill(1.5,weight)
-        else: h_nevents.Fill(2.5,weight)
+        for repeat in xrange(repeat_inputs):
+            weight = 1.
+            if hasattr(e, "genWeight"):
+                genWeight = getattr(e, "genWeight",None)
+                if genWeight:
+                    weight = genWeight
+            h_nevents.Fill(0.5,weight)
+            if weight>=0: h_nevents.Fill(1.5,weight)
+            else: h_nevents.Fill(2.5,weight)
 
-        clearExtraBranches(inputTree)
-        doneEvents += 1
-        ret = True
-        for m in modules: 
-            ret = m.analyze(e) 
-            if not ret: break
-        if ret:
-            acceptedEvents += 1
-        if (ret or not filterOutput) and wrappedOutputTree != None: 
-            h_nevents.Fill(3.5,weight)
-            wrappedOutputTree.fill()
+            clearExtraBranches(inputTree)
+            doneEvents += 1
+            ret = True
+            for m in modules: 
+                ret = m.analyze(e) 
+                if not ret: break
+            if ret:
+                acceptedEvents += 1
+            if (ret or not filterOutput) and wrappedOutputTree != None: 
+                h_nevents.Fill(3.5,weight)
+                wrappedOutputTree.fill()
         if progress:
             if ie > 0 and ie % progress[0] == 0:
                 t1 = time.time()

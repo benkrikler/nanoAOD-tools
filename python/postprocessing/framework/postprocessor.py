@@ -15,7 +15,7 @@ from PhysicsTools.NanoAODTools.postprocessing.framework.jobreport import JobRepo
 class PostProcessor :
     def __init__(self,outputDir,inputFiles,cut=None,branchsel=None,modules=[],compression="LZMA:9",friend=False,postfix=None,
 		 jsonInput=None,noOut=False,justcount=False,provenance=False,haddFileName=None,fwkJobReport=False,histFileName=None,histDirName=None, outputbranchsel=None,maxEntries=None,firstEntry=0,
-		 prefetch=False,longTermCache=False):
+		 prefetch=False,longTermCache=False,repeatInputs=1):
 	self.outputDir=outputDir
 	self.inputFiles=inputFiles
 	self.cut=cut
@@ -40,6 +40,7 @@ class PostProcessor :
         self.histDirName=histDirName
         self.maxEntries = maxEntries if maxEntries else 9223372036854775807L # 2^63 - 1, largest int64
         self.firstEntry = firstEntry
+        self.repeatInputs = max(1, repeatInputs)
         self.prefetch = prefetch # prefetch files to TMPDIR using xrdcp
         self.longTermCache = longTermCache # keep cached files across runs (it's then up to you to clean up the temp)
     def prefetchFile(self, fname, verbose=True):
@@ -171,7 +172,7 @@ class PostProcessor :
                         branchSelection=self.branchsel,
                         outputbranchSelection=self.outputbranchsel,
                         fullClone=fullClone, 
-                        maxEntries=self.maxEntries, 
+                        maxEntries=self.maxEntries * self.repeatInputs, 
                         firstEntry=self.firstEntry,
                         jsonFilter=jsonFilter,
                         provenance=self.provenance)
@@ -184,7 +185,7 @@ class PostProcessor :
 	    # process events, if needed
 	    if not fullClone:
                 eventRange = xrange(self.firstEntry, self.firstEntry + nEntries) if nEntries > 0 and not elist else None
-		(nall, npass, timeLoop) = eventLoop(self.modules, inFile, outFile, inTree, outTree, eventRange=eventRange, maxEvents=self.maxEntries)
+		(nall, npass, timeLoop) = eventLoop(self.modules, inFile, outFile, inTree, outTree, eventRange=eventRange, maxEvents=self.maxEntries, repeat_inputs=self.repeatInputs)
 		print 'Processed %d preselected entries from %s (%s entries). Finally selected %d entries' % (nall, fname, nEntries, npass)
 	    else:
                 nall = nEntries
